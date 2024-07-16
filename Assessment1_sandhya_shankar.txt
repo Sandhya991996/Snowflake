@@ -1,0 +1,377 @@
+1. How will you use to change the warehouse for workload processing to a warehouse named ‘COMPUTE_WH_XL’?
+To change the warehouse used for workload processing to a warehouse named 'COMPUTE_WH_XL', we can go with the following approach.
+
+step1: Check Current Warehouse using the following command
+SHOW PARAMETERS LIKE 'WAREHOUSE';
+
+step2:we can change to the warehouse named 'COMPUTE_WH_XL' using the below command:
+ALTER WAREHOUSE WAREHOUSE_NAME SET WAREHOUSE_SIZE = COMPURE_WH
+
+step3:Verify the Change: Now we can verigy if our warehouse is changed into COMPUTE_WH_XL
+SHOW PARAMETERS LIKE 'WAREHOUSE';
+
+2. Consider a table vehicle_inventory that stores vehicle information of all vehicles in your dealership. The table has only one VARIANT column called vehicle_data which stores information in JSON format. The data is given below:
+{
+“date_of_arrival”: “2021-04-28”,
+“supplier_name”: “Hillside Honda”,
+“contact_person”: {
+“name”: “Derek Larssen”,
+“phone”: “8423459854”
+},
+“vehicle”: [
+{
+“make”: “Honda”,
+“model”: “Civic”,
+“variant”: “GLX”,
+“year”: “2020”
+}
+]
+}
+What is the command to retrieve supplier_name?
+
+
+solution:
+
+CREATE OR REPLACE TABLE vehicle_json (data_json VARIANT);
+ 
+INSERT INTO vehicle_json (data_json) 
+SELECT parse_json('{
+  "date_of_arrival": "2021-04-28",
+  "supplier_name": "Hillside Honda",
+  "contact_person": {
+    "name": "Derek Larssen",
+    "phone": "8423459854"
+  },
+  "vehicle": [
+    {
+      "make": "Honda",
+      "model": "Civic",
+      "variant": "GLX",
+      "year": "2020"
+    }
+  ]
+}');
+ 
+SELECT * from vehicle_json;
+ 
+-- Query to retrieve supplier_name from the table vehicle_json
+SELECT 
+  data_json:"supplier_name"::STRING AS supplier_name
+FROM 
+  vehicle_json;
+  
+I have tried executing the steps in snowflake terminal,  a table with single column of variant type and inserted the record. We have to use parse_json function to enter the data.
+ And using the column name and key "supplier_name", we will be able to retrieve the value. 
+
+
+3.From a terminal window, how to start SnowSQL from the command prompt ? And write the steps to load the data from local folder into a Snowflake table usin three types of internal stages.
+STEP 1: Logging into Snowflake Using Web UI
+STEP 2: Creating Snowflake Objects like warehouse, database and tables as follows:
+CREATE DATABASE TRAINING_DB;
+create database staging;
+use staging;
+
+--CREATE TABLE
+create or replace table emp (
+  first_name string ,
+  last_name string 
+  );
+  
+--CREATE WAREHOUSE
+create or replace warehouse TEST_WH with
+  warehouse_size='MEDIUM'
+  auto_suspend = 300
+  auto_resume = true
+  initially_suspended=true;
+  
+
+STEP 3: upload the data files from local to snowflake by creating internal stages.
+
+There are 3 different internal stages in snowflake
+1. User Stages 
+2. Table Stages
+3. Named stages
+
+
+--Command to Connect to SnowSQL. Open the command prompt and enter below command - 
+snowsql -a accountidentifier(in snowflakeURL);
+
+
+--Upload the file from local to internal stage
+
+put file://c:/sandhya/emp/emp.csv @~; 
+or
+put file:file://c:/sandhya/emp/emp.csv @INGEST_DATA.PUBLIC.EMP_STAGE;
+
+PUT file://c:/sandhya/emp/emp.csv @tbl_stg;(using table stg)
+
+
+--To view the files staged 
+list @~;
+
+
+--STEP 4: Copy Data into the Target Table in snowflake from internal stage
+copy into emp
+  from @EMP_STAGE
+  file_format = (type = csv field_optionally_enclosed_by='"')
+  on_error = 'skip_file';
+--STEP 5: Query the loaded data
+select * from emp;
+
+
+4.Create an X-Small warehouse named xf_tuts_wh using the CREATE WAREHOUSE command with below options 
+a) Size with x-small
+b) which can be automatically suspended after 10 mins
+c) setup how to automatically resume the warehouse
+d) Warehouse should be suspended once after created
+CREATE OR REPLACE WAREHOUSE xf_tuts_wh 
+WAREHOUSE_SIZE = 'X-Small'
+AUTO_SUSPEND = 600
+AUTO_RESUME = TRUE
+INITIALLY_SUSPENDED=true;
+
+description of each command:
+
+CREATE WAREHOUSE xf_tuts_wh: to create a  new warehouse xf_tuts_wh.
+
+WAREHOUSE_SIZE as'X-Small': Specifies that the warehouse should be an X-Small size.
+
+AUTO_SUSPEND is 10min : Automatically suspends the warehouse after 10 minutes of inactivity(which is 600seconds)
+
+AUTO_RESUME  is TRUE: Ensures that the warehouse automatically resumes when a query is submitted to it after being suspended.
+
+INITIALLY_SUSPENDED is true : command immediately suspends the warehouse after it's created.
+
+
+5. A CSV file ‘customer.csv’ consists of 1 or more records, with 1 or more fields in each record, and sometimes a header record. Records and fields in each file are separated by delimiters. How will
+Load the file into snowflake table ?
+Following are the Steps to Load customer.csv file into a Snowflake Table
+
+STEP1: Create Customer table in snowflake 
+we need to have a target table in Snowflake to load the data.
+
+example:
+Use DATABASE staging;
+
+CREATE TABLE customer(
+    id INT,
+    name VARCHAR,
+    email VARCHAR,
+    phone VARCHAR);
+
+STEP2: Once the table is created in snowflake, We need to make sure the CSV file is accessible to snowflake by uploading the file to internal or external stage.
+Here I have written steps to upload customer.csv file to a Snowflake Internal user Stage which is managed by Snowflake:
+
+Upload the customer.csv file to User Stage Example:
+
+-- using snowsql we can upload the file from local computer to the Snowflake internal user stage. Below is the command:
+--Login to snowsql CLI
+--check the snowflake version
+--we can use account identifier : snowsql -a accountidentifier(in URL) with username and password
+--we can download the csv file from local to snowsql stage using PUT command as follws:
+
+PUT file://Users/sandhyash/DocumentsSnowflake/customer.csv @%user_stage/;
+
+-- validate if the csv file is successfully loaded
+LIST @user_stage;
+
+sql
+Copy code
+PUT file:///local/path/to/customer.csv @%user_stage/;
+Replace /local/path/to/customer.csv with the actual path to your local file and %user_stage with your user stage name.
+
+
+STEP3: We can load customer.csv file into customer Table through user stage using COPY INTO command as follows:
+
+-- copy from internal user stage into the snowflake table
+copy into customer from @user_STAGE 
+FILE_FORMAT = (TYPE = CSV, FIELD_OPTIONALLY_ENCLOSED_BY='"', SKIP_HEADER = 1)
+ON_ERROR = 'CONTINUE';
+
+-- validate that the data is successfully loaded
+SELECT * FROM CUSTOMER;
+
+6. Write the commands to disable < auto-suspend > option for a virtual warehouse
+First we need to ensure we have the necessary priviliges such as accountadmin or warehouseadmin to execute the alter commands on warehouse.
+We can use auto suspend command to disable the virtual warehouse using following command:
+
+ALTER WAREHOUSE my_warehouse
+SET AUTO_SUSPEND = NULL;
+
+7. What is the command to concat the column named 'EMPLOYEE' between two % signs ? 
+
+we can use concat() funtion here:
+SELECT CONCAT('%', EMPLOYEE, '%') AS concatenated_employee
+FROM your_table;
+
+8.You have stored the below JSON in a table named car_sales as a variant column
+
+{
+  "customer": [
+    {
+      "address": "San Francisco, CA",
+      "name": "Joyce Ridgely",
+      "phone": "16504378889"
+    }
+  ],
+  "date": "2017-04-28",
+  "dealership": "Valley View Auto Sales",
+  "salesperson": {
+    "id": "55",
+    "name": "Frank Beasley"
+  },
+  "vehicle": [
+    {
+      "extras": [
+        "ext warranty",
+        "paint protection"
+      ],
+      "make": "Honda",
+      "model": "Civic",
+      "price": "20275",
+      "year": "2017"
+    }
+  ]
+}
+How will you query the table to get the dealership data?
+
+query:
+SELECT car_sales:dealership::string AS dealership
+FROM sales;
+
+9. A medium size warehouse runs in Auto-scale mode for 3 hours with a resize from Medium (4 servers per cluster) to Large (8 servers per cluster). Warehouse is resized from Medium to Large at 1:30 hours, Cluster 1 runs continuously, Cluster 2 runs continuously for the 2nd and 3rd hours, Cluster 3 runs for 15 minutes in the 3rd hour. How many total credits will be consumed
+
+10. What is the command to check status of snowpipe?
+SHOW PIPELINE my_pipe;
+This will list all the Snowpipes along with their current status and other details.
+
+11. What are the different methods of getting/accessing/querying data from Time travel , Assume the table name is 'CUSTOMER' and please write the command for each method.
+
+Solution:
+There are 3 method of time travel –
+1. Using Timestamp – We can do time travel to any point of time before or after the specified
+timestamp.
+2. Using Offset – We can do time travel to any previous point of time.
+3. Using Query ID – We can do time travel to any point of time before or after the specified
+Query ID
+
+Time travel using a timestamp:
+
+--Time travel to time just BEFORE the update was run
+--Use the timestamp that you saved earlier
+SELECT * FROM cust.public.CUSTOMER BEFORE(TIMESTAMP => '2024-07-16
+11:05:34.068'::timestamp);
+
+
+Time travel using offset:
+--Time travel to 2 minutes ago
+SELECT * FROM cust.public.CUSTOMER AT(OFFSET => -60 * 2)
+
+
+--Copy the Query ID of the update statement
+--026783ec-000d-4422-0000-00001df53dyw5t5
+
+--Check the result from the CUSTOMER table
+SELECT * FROM cust.public. LIMIT 10;
+
+Time travel using Query ID:
+
+--Time travel to the time before the update query was run
+SELECT * FROM cust.public.CUSTOMER BEFORE(STATEMENT =>
+'026783ec-000d-4422-0000-00001df53dyw5t5');
+
+12. If comma is defined as column delimiter in file "employee.csv" and if we get extra comma in the data how to handle this scenario?
+we can use the QUOTE parameter in Snowflake to mention the quote when loading the data. Command is as follows:
+
+COPY INTO employee
+FROM @stage
+FILE_FORMAT = (TYPE = CSV FIELD_OPTIONALLY_ENCLOSED_BY='"' SKIP_HEADER = 1)
+ON_ERROR = CONTINUE;
+
+FIELD_OPTIONALLY_ENCLOSED_BY='"': This option tells Snowflake to interpret fields enclosed in double quotes.
+ here, Fields that are enclosed will be treated as single entities
+
+13. What is the command to read data directly from S3 bucket/External/Internal Stage
+1. Reading Data from External Stage (S3, Azure, Google Cloud Storage)
+
+COPY INTO emp
+FROM @user_stage/path/to/data
+FILE_FORMAT = (FORMAT_NAME = 'CSV');
+
+
+we can query data directly from the external stage using a SELECT statement:
+
+SELECT * FROM @user_stage/path/to/data
+(FILE_FORMAT => 'CSV');
+
+
+Using COPY INTO to Load Data into a Table from Internal Stage
+sql
+
+FROM @%user_stage/path/to/data
+FILE_FORMAT = (FORMAT_NAME = 'CSV');
+
+Using SELECT to Query Data Directly from Internal Stage
+
+SELECT *
+FROM @%user_stage/path/to/data
+(FILE_FORMAT => 'CSV');
+
+
+
+14.Lets assume we have table with name 'products' which contains duplicate rows. How will delete the duplicate rows ?
+we can use the ROW_NUMBER() window function:
+
+WITH duplicates_cte AS (
+    SELECT *,
+           ROW_NUMBER() OVER (PARTITION BY column1, column2, ... ORDER BY column1) AS rowno
+    FROM products
+)
+DELETE FROM duplicates_cte
+WHERE rowno > 1;
+
+15. How is data unloaded out of Snowflake?
+•	Unloading data from Snowflake is the process of exporting data from Snowflake tables  into files that stored externally in local location or in cloud storage like S3, Azure. 
+•	we can use COPY INTO command to load the data into internal or external Stages, then we can then download the unloaded data files to our local file location
+system.
+
+1. Unload data into Local from snowflake through internal stages : commands are as follows:
+SELECT * FROM emp_basic_local;
+
+--copy into command to unload the data from table to internal stage:
+copy into @%emp_basic_local
+from emp_basic_local
+file_format = (type = csv field_optionally_enclosed_by='"')
+--on_error = 'skip_file';
+
+--get command to download the data from internal stage to local file location:
+get @emp_stage file://C:\temp\Employee\unload
+
+2. Steps to download the data from Snowflake table to external S3 bucket using external stage:
+create or replace file format unload_csv
+type = csv field_delimiter = ',' skip_header = 1 null_if = ('NULL', 'null') empty_field_as_null = true compression = gzip;
+
+alter storage integration s3_int set  storage_allowed_locations=('s3://snowflake069/employee/','s3://snowflake069/emp_unload/','s3://snowflake069/zip_folder/')
+
+--describe the integration:
+desc integration s3_int
+
+--create the externak stage:
+create or replace stage my_s3_unload_stage
+  storage_integration = s3_int
+  url = 's3://snowflake069/emp_unload/'
+  file_format = unload_csv;
+
+--copy into command to copy the data from table to external stage:
+copy into @my_s3_unload_stage
+from
+emp_ext;
+
+
+--If we need to change the file format as parquet, we can use the following command)
+copy into @my_s3_unload_stage/parquet_
+from
+emp_ext_stage
+FILE_FORMAT=(TYPE='PARQUET' SNAPPY_COMPRESSION=TRUE)
+
+
