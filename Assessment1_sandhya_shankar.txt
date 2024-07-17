@@ -242,15 +242,15 @@ FROM sales;
 9. A medium size warehouse runs in Auto-scale mode for 3 hours with a resize from Medium (4 servers per cluster) to Large (8 servers per cluster). Warehouse is resized from Medium to Large at 1:30 hours, Cluster 1 runs continuously, Cluster 2 runs continuously for the 2nd and 3rd hours, Cluster 3 runs for 15 minutes in the 3rd hour. How many total credits will be consumed
 Solution:
 CLUSTER 1: It is Medium cluster which will run for 3 hours continuously so
-4*3= 12 credits
+18credits
  
 CLUSTER 2: It is Large Cluster which was auto scaled after 1.30 hour. So in 2nd hour it run for 30 minutes and 3rd hour continuously.
-              8*(0.5+1)= 8*1.5=12 credits
+14 credits
  
 CLUSTER 3: It would be again Large cluster which was active for only 15 minutes in 3rd hour.
               8*0.25=2 credits
  
-So, 12+12+2= 26 CREDITS
+So, 12+12+2= 34 CREDITS
 
 10. What is the command to check status of snowpipe?
 SHOW PIPELINE my_pipe;
